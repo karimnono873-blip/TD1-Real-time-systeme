@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Correction du TD - Systèmes Temps Réel</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #24292e;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #ffffff;
+        }
+        h1, h2, h3 {
+            border-bottom: 1px solid #eaecef;
+            padding-bottom: 0.3em;
+            margin-top: 24px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        th, td {
+            border: 1px solid #dfe2e5;
+            padding: 6px 13px;
+            text-align: left;
+        }
+        th {
+            background-color: #f6f8fa;
+        }
+        .gantt-table th, .gantt-table td {
+            text-align: center;
+            font-size: 0.9em;
+            padding: 4px;
+        }
+        code {
+            background-color: rgba(27,31,35,0.05);
+            border-radius: 3px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            padding: 0.2em 0.4em;
+        }
+        .math {
+            font-family: "Cambria Math", "Times New Roman", serif;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Correction Série 03 : Ordonnancement Temps Réel</h1>
+    <p>Cette page contient la résolution des exercices de la Série 03 [cite: 1] utilisant les notations classiques (C: temps d'exécution, P: période, D: deadline, N: nombre de tâches)[cite: 2].</p>
+
+    <h2>Exercice 1 [cite: 3]</h2>
+    <p><strong>Jeu de tâches :</strong> T1(P=50, C=10), T2(P=40, C=10), T3(P=30, C=15)[cite: 7].</p>
+    
+    <h3>1. Critère de Liu et Layland [cite: 8, 9]</h3>
+    <p>Le test de Liu et Layland pour RM (Rate Monotonic) stipule que l'ordonnancement est garanti si le facteur d'utilisation <i>U</i> est inférieur ou égal à <i>N(2<sup>1/N</sup> - 1)</i>[cite: 4, 5].</p>
+    <p>Calculons <i>U</i> : <br>
+    <i>U</i> = (10/50) + (10/40) + (15/30) = 0.2 + 0.25 + 0.5 = 0.95.</p>
+    <p>Pour N = 3, la borne est 3(2<sup>1/3</sup> - 1) ≈ 0.779.</p>
+    <p><strong>Conclusion :</strong> Puisque 0.95 &gt; 0.779, le critère de Liu et Layland n'est pas respecté. On ne peut pas garantir mathématiquement que le système est ordonnançable avec RM via ce simple test, il faut faire une analyse exacte (diagramme de Gantt).</p>
+
+    <h3>2. Diagramme d'ordonnancement RM [cite: 10]</h3>
+    <p>En RM, la priorité est donnée à la tâche ayant la plus petite période. Priorités : <strong>T3 &gt; T2 &gt; T1</strong>.</p>
+    <ul>
+        <li>t=0 : T3, T2, T1 sont prêtes. T3 s'exécute (15 unités).</li>
+        <li>t=15 : T3 termine. T2 s'exécute (10 unités).</li>
+        <li>t=25 : T2 termine. T1 s'exécute.</li>
+        <li>t=30 : T3 est de nouveau prête. T3 préempte T1 (qui a exécuté 5 unités sur 10). T3 s'exécute.</li>
+        <li>t=40 : T2 est prête, mais T3 est plus prioritaire. T3 termine à t=45.</li>
+        <li>t=45 : T2 s'exécute jusqu'à t=50 (fin d'exécution de 5 unités).</li>
+        <li>t=50 : <strong>Échéance ratée pour T1 !</strong> T1 n'a exécuté que 5 de ses 10 unités avant sa deadline à t=50.</li>
+    </ul>
+    <p><em>Le jeu de tâches n'est donc pas ordonnançable avec RM.</em></p>
+
+
+    <h2>Exercice 2 - RM et EDF [cite: 11]</h2>
+    <p><strong>Jeu de tâches :</strong> T1(P=D=9, C=3), T2(P=D=18, C=5), T3(P=D=12, C=4)[cite: 12].</p>
+
+    <h3>1. Trace d'exécution RM (18 premières périodes) [cite: 13]</h3>
+    <p>Priorités RM : <strong>T1 &gt; T3 &gt; T2</strong>.</p>
+    <table class="gantt-table">
+        <tr>
+            <th>Temps</th><th>0-3</th><th>3-7</th><th>7-9</th><th>9-12</th><th>12-16</th><th>16-18</th>
+        </tr>
+        <tr>
+            <td>Tâche</td><td>T1</td><td>T3</td><td>T2</td><td>T1</td><td>T3</td><td>T2</td>
+        </tr>
+    </table>
+    <p>À t=18, T2 n'a pu exécuter que 4 unités de temps sur les 5 requises (2 unités de 7 à 9, et 2 unités de 16 à 18). <strong>T2 rate son échéance à t=18.</strong> L'ordonnancement RM n'est donc pas faisable.</p>
+
+    <h3>2. Trace d'exécution EDF (36 premières périodes) [cite: 14]</h3>
+    <p>EDF (Earliest Deadline First) assigne la priorité dynamique à la tâche dont l'échéance absolue est la plus proche.</p>
+    <p>Un tracé minutieux sur l'hyperpériode de 36 (PPCM de 9, 12, 18) montre qu'aucune échéance n'est manquée :</p>
+    <ul>
+        <li>[0-3]: T1 (D=9)</li>
+        <li>[3-7]: T3 (D=12)</li>
+        <li>[7-9]: T2 (D=18)</li>
+        <li>[9-12]: T1 (D=18, T2 a aussi D=18, on choisit T1)</li>
+        <li>[12-15]: T2 (D=18, T3 a D=24)</li>
+        <li>[15-18]: T3 (D=24, besoin de 4, fait 3)</li>
+        <li>[18-19]: T3 (D=24, termine sa dernière unité)</li>
+        <li>[19-22]: T1 (D=27)</li>
+        <li>[22-24]: T2 (D=36)</li>
+        <li>[24-28]: T3 (D=36)</li>
+        <li>[28-31]: T1 (D=36)</li>
+        <li>[31-34]: T2 (D=36, termine ses 3 unités restantes)</li>
+        <li>[34-36]: Repos (Idle)</li>
+    </ul>
+
+    <h3>3. Facteur d'utilisation du CPU [cite: 15]</h3>
+    <p><i>U</i> = (3/9) + (5/18) + (4/12) = 12/36 + 10/36 + 12/36 = 34/36 ≈ <strong>94.4%</strong>.</p>
+
+
+    <h2>Exercice 3 : RM, EDF et LLF [cite: 16]</h2>
+    <p><strong>Tâches à t=0 :</strong> T1(C=1, P=3) [cite: 17, 18], T2(C=1, P=4) [cite: 20], T3(C=2, P=6)[cite: 21].</p>
+    
+    <h3>Calcul du facteur d'utilisation (U) [cite: 23]</h3>
+    <p><i>U</i> = (1/3) + (1/4) + (2/6) = 4/12 + 3/12 + 4/12 = 11/12 ≈ <strong>91.6%</strong>.</p>
+    <p><strong>Conclusion :</strong> Comme U ≤ 1, le jeu de tâches est théoriquement ordonnançable par des algorithmes dynamiques optimaux comme EDF et LLF. Cependant, 0.916 > 0.78 (borne L&L pour n=3 [cite: 24]), on ne peut donc pas conclure directement pour RM ; un tracé est nécessaire.</p>
+
+
+    <h2>Exercice 4 [cite: 25]</h2>
+    <p><strong>Système :</strong> T1(P=20, C=3, D=15), T2(P=80, C=40, D=60), T3(P=40, C=10, D=35)[cite: 26, 27].</p>
+
+    <h3>1. Ordonnancement RMA [cite: 28]</h3>
+    <p><strong>a) Priorités :</strong> Basées sur les périodes les plus courtes[cite: 29]. Priorité : <strong>T1 &gt; T3 &gt; T2</strong>.</p>
+    <p><strong>b) Facteur d'utilisation :</strong> U = 3/20 + 40/80 + 10/40 = 0.15 + 0.5 + 0.25 = <strong>0.90</strong>. Le test d'utilisation classique suppose D = P[cite: 30]. Puisque ici D &lt; P pour toutes les tâches, le test n'est pas applicable tel quel, et 0.90 est élevé.</p>
+
+    <h3>2. Ordonnancement DMA (Deadline Monotonic) [cite: 32]</h3>
+    <p><strong>a) Priorités :</strong> Basées sur les deadlines relatives les plus courtes[cite: 33]. Priorité : <strong>T1 (15) &gt; T3 (35) &gt; T2 (60)</strong>.</p>
+    <p><em>Note :</em> Ici, DMA donne exactement le même ordre de priorité que RMA.</p>
+
+    <h3>3. Ordonnancement EDF [cite: 36]</h3>
+    <p><strong>a) Facteur d'utilisation :</strong> U = 0.90[cite: 37]. Comme U ≤ 1 et que l'algorithme est EDF, si D=P le système serait valide. Puisque D &lt; P, on doit utiliser le critère de charge processeur (Processor Demand Analysis) pour affirmer la validité[cite: 37].</p>
+
+
+    <h2>Exercice 6 [cite: 43]</h2>
+    <p><strong>Processus :</strong> P1=10, P2=1, P3=2, P4=1, P5=5[cite: 44, 45]. Tous arrivent à t=0[cite: 46].</p>
+
+    <h3>1. Diagrammes de Gantt (Arrivée à t=0) [cite: 47]</h3>
+    <p><strong>FCFS[cite: 48]:</strong> Exécute dans l'ordre d'arrivée.</p>
+    <p><code>[P1: 0-10] | [P2: 10-11] | [P3: 11-13] | [P4: 13-14] | [P5: 14-19]</code></p>
+    
+    <p><strong>Round Robin (q=2)[cite: 49]:</strong></p>
+    <p><code>[P1: 0-2] | [P2: 2-3] | [P3: 3-5] | [P4: 5-6] | [P5: 6-8] | [P1: 8-10] | [P5: 10-12] | [P1: 12-14] | [P5: 14-15] | [P1: 15-19]</code></p>
+
+    <h3>2. SJF préemptif (SRTF) avec temps d'arrivée décalés [cite: 53]</h3>
+    <p>Arrivées : t(P1)=0, t(P2)=1, t(P3)=2, t(P4)=3, t(P5)=4[cite: 50, 51, 52].</p>
+    <ul>
+        <li>t=0: P1 s'exécute (reste 10).</li>
+        <li>t=1: P2 arrive (besoin 1). P2 préempte P1 (reste 9).</li>
+        <li>t=2: P2 termine. P3 arrive (besoin 2). P3 s'exécute.</li>
+        <li>t=3: P4 arrive (besoin 1). P4 préempte P3 (reste 1).</li>
+        <li>t=4: P4 termine. P5 arrive (besoin 5). P3 reprend (besoin 1 &lt; P5).</li>
+        <li>t=5: P3 termine. P5 s'exécute (besoin 5).</li>
+        <li>t=10: P5 termine. P1 reprend (reste 9).</li>
+        <li>t=19: P1 termine.</li>
+    </ul>
+
+</body>
+</html>
